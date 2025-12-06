@@ -1,115 +1,60 @@
-# ComfyUI 远程保存图像
+# ComfyUI 远程预览与保存
 
-一个用于 ComfyUI 的自定义节点，允许将生成的图像上传到任何 HTTP 端点。
+一个用于 ComfyUI 的自定义节点，它结合了本地即时预览和远程上传备份的功能。
 
 ## 概述
 
-这个自定义节点为在 ComfyUI 工作流中生成的图像提供了一个灵活的保存解决方案，可以将图像保存到任何通过 HTTP POST 请求接受文件上传的网络服务器或 API。与绑定到特定云服务提供商（AWS S3、GCS、Azure Blob）的节点不同，此节点可与任何通过 HTTP 接收文件的服务一起使用。
+本节点旨在提供与 ComfyUI 原生 `PreviewImage` 节点完全一致的使用体验，同时增加了将生成的图片上传到远程服务器（通过 HTTP POST 或 WebDAV）的能力。
 
-该节点作为输出节点运行，类似于标准的 SaveImage 节点，允许它作为工作流的最终节点使用，同时在 ComfyUI 界面中显示上传结果。
+它的核心工作流程是：首先将图片保存到本地的临时文件夹以供 ComfyUI 前端即时预览，然后，在后台将该图片上传到您指定的远程位置。
 
 ## 特性
 
-- 将图像上传到任何接受 `multipart/form-data` POST 请求的 URL 端点
-- 自定义请求中图像文件的字段名
-- 添加自定义 HTTP 头（例如，用于身份验证）
-- 在请求中包含额外的表单数据
-- 在上传前将图像转换为不同格式（PNG、JPEG、WEBP）
-- 控制 JPEG 和 WEBP 格式的图像质量
+- **本地预览优先**：与原生 `PreviewImage` 体验一致，立即在界面上显示生成的图片。
+- **高级文件名格式化**：完全支持 ComfyUI 的高级文件名语法，如 `%date:yyyy-MM-dd%` 或引用其他节点的值。
+- **元数据保留**：自动将完整的工作流（Prompt, extra_pnginfo）嵌入到 PNG 文件中。
+- **双上传模式**：支持通过 `HTTP POST` 和 `WebDAV` 两种方式上传到远程服务器。
+- **远程文件查重**：在 WebDAV 模式下，上传前会检查远程服务器是否存在同名文件，如果存在则跳过上传，避免重复。
+- **纯 PNG 格式**：为确保元数据完整性，节点只处理和上传 PNG 格式的图片。
 
 ## 安装
 
-1. 将此仓库克隆到您的 ComfyUI 的 `custom_nodes` 目录中：
-   ```
-   cd /path/to/ComfyUI/custom_nodes
-   git clone https://github.com/yourusername/ComfyUI-Remote-Save-Image.git
-   ```
-
-2. 安装所需的依赖项：
-   ```
-   cd ComfyUI-Remote-Save-Image
-   pip install -r requirements.txt
-   ```
-
-3. 重启 ComfyUI
+1.  将此仓库克隆到您的 ComfyUI 的 `custom_nodes` 目录中：
+    ```
+    cd /path/to/ComfyUI/custom_nodes
+    git clone https://github.com/yourusername/ComfyUI-Remote-Save-Image.git
+    ```
+2.  安装所需的依赖项：
+    ```
+    cd ComfyUI-Remote-Save-Image
+    pip install -r requirements.txt
+    ```
+3.  重启 ComfyUI
 
 ## 使用方法
 
-安装后，您将在 ComfyUI 节点菜单的 "image/upload" 类别中找到 "Remote Save Image" 节点。
+安装后，您将在 ComfyUI 节点菜单的 `image/upload` 类别中找到 **`Remote Preview & Save`** 节点。
 
 ### 节点参数
 
-- **images**：连接到图像生成节点的输出
-- **upload_url**：图像将被上传的完整 URL（例如，"https://your-api.com/upload"）
-- **image_field_name**：图像文件的表单字段名（默认："file"）
-- **filename_prefix**：生成的文件名前缀（默认："ComfyUI"）
-- **image_format**：保存图像的格式（PNG、JPEG、WEBP）
-- **headers_json**：包含要在请求中包含的头部的 JSON 字符串（例如，用于身份验证）
-- **extra_data_json**：包含要在请求中包含的额外表单数据的 JSON 字符串
-- **quality**：JPEG 和 WEBP 格式的质量设置（1-100）
+-   **images**: 连接到图像生成节点的输出。
+-   **filename_prefix**: 文件名前缀，支持 ComfyUI 的高级格式化语法。
+-   **upload_mode**: 上传模式，选择 `HTTP_POST` 或 `WEBDAV`。
+-   **upload_url**: 远程上传的目标地址。
+    -   在 **HTTP POST** 模式下，这是接收请求的 API 端点。
+    -   在 **WebDAV** 模式下，这是服务器上的目标目录 URL。
+-   **image_field_name**: (仅 HTTP POST) 图像文件的表单字段名。
+-   **headers_json**: (仅 HTTP POST) 自定义 HTTP 请求头。
+-   **extra_data_json**: (仅 HTTP POST) 额外的表单数据。
+-   **webdav_user**: (仅 WebDAV) WebDAV 用户名。
+-   **webdav_password**: (仅 WebDAV) WebDAV 密码。
 
-### 示例工作流
-
-1. 在 ComfyUI 中创建标准图像生成工作流
-2. 添加 "Remote Save Image" 节点
-3. 将图像生成节点的输出连接到 "images" 输入
-4. 配置上传 URL 和其他参数
-5. 运行工作流
-
-节点将图像上传到指定的 URL 并在 ComfyUI 界面中显示服务器响应。当您想将图像上传到远程服务器而不是本地保存时，它可以直接替代标准的 SaveImage 节点使用。
-
-## API 响应格式
-
-为了在 ComfyUI 界面中正确显示上传的图像（类似于标准的 SaveImage 节点），您的 API 端点应返回包含上传图像 URL 的 JSON 响应。节点将尝试通过以下方式从响应中提取 URL：
-
-1. 直接 URL 字段：响应应在根级别包含 `url` 字段：
-   ```json
-   {
-     "url": "https://your-server.com/path/to/uploaded/image.png",
-     "other_fields": "..."
-   }
-   ```
-
-2. 嵌套 URL 字段：或者，URL 可以嵌套在 `data` 对象中：
-   ```json
-   {
-     "data": {
-       "url": "https://your-server.com/path/to/uploaded/image.png",
-       "other_fields": "..."
-     },
-     "status": "success"
-   }
-   ```
-
-如果节点能从响应中提取有效的 URL，该 URL 将被包含在返回值中，并可被工作流中的其他节点使用。如果未找到 URL，节点仍将在 ComfyUI 界面中显示完整的响应文本。
-
-## 返回值结构
-
-Remote Save Image 节点现在返回与标准 SaveImage 节点兼容的值结构：
-
-```json
-{
-  "ui": {
-    "images": [
-      {
-        "filename": "remote_image_1",
-        "subfolder": "",
-        "type": "remote",
-        "url": "https://your-server.com/path/to/uploaded/image.png",
-        "status": "success",
-        "message": "Image 1 uploaded successfully: {...}"
-      }
-    ]
-  }
-}
-```
-
-这种结构允许该节点在期望该格式的工作流中作为 SaveImage 节点的直接替代品使用。
+**注意**：如果 `upload_url` 为空，节点将只执行本地预览，不会进行远程上传。
 
 ## 安全考虑
 
-- **API 密钥和令牌**：在 `headers_json` 字段中小心处理敏感信息。考虑使用环境变量或安全方法来管理凭据。
-- **数据隐私**：注意您在 `extra_data_json` 字段中发送的数据，特别是个人或敏感信息。
+-   **API 密钥和令牌**：在 `headers_json` 字段中小心处理敏感信息。
+-   **数据隐私**：注意您在 `extra_data_json` 字段中发送的数据。
 
 ## 许可证
 
