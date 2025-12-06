@@ -3,12 +3,14 @@ ComfyUI-Remote-Save-Image
 A custom node for ComfyUI that allows uploading generated images to any HTTP endpoint.
 """
 
-from .remote_image_saver import RemotePreviewSave
+from .remote_image_saver import UploadConfig, RemotePreviewAndUpload
 
 NODE_CLASS_MAPPINGS = {
-    "RemotePreviewSave": RemotePreviewSave
+    "UploadConfig": UploadConfig,
+    "RemotePreviewAndUpload": RemotePreviewAndUpload,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RemotePreviewSave": "Remote Preview & Save"
+    "UploadConfig": "Upload Config",
+    "RemotePreviewAndUpload": "Preview & Upload Image",
 }

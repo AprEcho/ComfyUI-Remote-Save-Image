@@ -1,60 +1,58 @@
-# ComfyUI 远程预览与保存
+# ComfyUI 模块化上传节点
 
-一个用于 ComfyUI 的自定义节点，它结合了本地即时预览和远程上传备份的功能。
+这是一个将远程上传功能模块化的 ComfyUI 自定义节点集合。它将上传配置与图像处理完全分离，提供了极大的灵活性和可复用性。
 
 ## 概述
 
-本节点旨在提供与 ComfyUI 原生 `PreviewImage` 节点完全一致的使用体验，同时增加了将生成的图片上传到远程服务器（通过 HTTP POST 或 WebDAV）的能力。
+本插件包含两个核心节点：
+1.  **`Upload Config`**: 一个用于定义远程服务器信息（地址、模式、凭据）的配置节点。
+2.  **`Preview & Upload Image`**: 一个用于预览图像并根据传入的配置执行上传的执行节点。
 
-它的核心工作流程是：首先将图片保存到本地的临时文件夹以供 ComfyUI 前端即时预览，然后，在后台将该图片上传到您指定的远程位置。
+这种设计允许您在工作流中创建一个配置，然后将其连接到多个 `Preview & Upload Image` 节点，实现配置的统一管理。
 
 ## 特性
 
-- **本地预览优先**：与原生 `PreviewImage` 体验一致，立即在界面上显示生成的图片。
-- **高级文件名格式化**：完全支持 ComfyUI 的高级文件名语法，如 `%date:yyyy-MM-dd%` 或引用其他节点的值。
-- **元数据保留**：自动将完整的工作流（Prompt, extra_pnginfo）嵌入到 PNG 文件中。
-- **双上传模式**：支持通过 `HTTP POST` 和 `WebDAV` 两种方式上传到远程服务器。
-- **远程文件查重**：在 WebDAV 模式下，上传前会检查远程服务器是否存在同名文件，如果存在则跳过上传，避免重复。
-- **纯 PNG 格式**：为确保元数据完整性，节点只处理和上传 PNG 格式的图片。
+-   **模块化设计**：将配置与执行分离，使工作流更清晰、更易于管理。
+-   **原生预览体验**：`Preview & Upload Image` 节点完美复刻了原生 `PreviewImage` 的功能，可立即在界面上显示结果。
+-   **原生命名逻辑**：完全采用 ComfyUI 的临时文件命名机制，无需手动设置文件名。
+-   **元数据保留**：自动将完整的工作流元数据嵌入到 PNG 文件中。
+-   **统一认证**：无论是 `HTTP POST`（基本认证）还是 `WebDAV`，都使用统一的用户名/密码输入。
+-   **WebDAV 查重**：在 WebDAV 模式下，上传前会检查文件是否存在，避免重复上传。
+-   **可选上传**：如果 `Preview & Upload Image` 节点没有连接 `Upload Config`，它就只作为一个标准的预览节点使用。
 
 ## 安装
 
-1.  将此仓库克隆到您的 ComfyUI 的 `custom_nodes` 目录中：
-    ```
-    cd /path/to/ComfyUI/custom_nodes
-    git clone https://github.com/yourusername/ComfyUI-Remote-Save-Image.git
-    ```
-2.  安装所需的依赖项：
-    ```
-    cd ComfyUI-Remote-Save-Image
-    pip install -r requirements.txt
-    ```
-3.  重启 ComfyUI
+1.  将此仓库克隆到您的 ComfyUI 的 `custom_nodes` 目录中。
+2.  安装所需的依赖项: `pip install -r requirements.txt`。
+3.  重启 ComfyUI。
 
 ## 使用方法
 
-安装后，您将在 ComfyUI 节点菜单的 `image/upload` 类别中找到 **`Remote Preview & Save`** 节点。
+安装后，您将在 `image/upload` 类别中找到两个新节点。
 
-### 节点参数
+### 1. `Upload Config` 节点
+这个节点用来定义您的上传目标。
 
--   **images**: 连接到图像生成节点的输出。
--   **filename_prefix**: 文件名前缀，支持 ComfyUI 的高级格式化语法。
--   **upload_mode**: 上传模式，选择 `HTTP_POST` 或 `WEBDAV`。
--   **upload_url**: 远程上传的目标地址。
-    -   在 **HTTP POST** 模式下，这是接收请求的 API 端点。
-    -   在 **WebDAV** 模式下，这是服务器上的目标目录 URL。
--   **image_field_name**: (仅 HTTP POST) 图像文件的表单字段名。
--   **headers_json**: (仅 HTTP POST) 自定义 HTTP 请求头。
--   **extra_data_json**: (仅 HTTP POST) 额外的表单数据。
--   **webdav_user**: (仅 WebDAV) WebDAV 用户名。
--   **webdav_password**: (仅 WebDAV) WebDAV 密码。
+-   **upload_url**: 远程服务器地址。
+-   **upload_mode**: 上传模式 (`HTTP_POST` 或 `WEBDAV`)。
+-   **username**: 用户名。
+-   **password**: 密码。
 
-**注意**：如果 `upload_url` 为空，节点将只执行本地预览，不会进行远程上传。
+它会输出一个 `UPLOAD_CONFIG` 对象。
 
-## 安全考虑
+### 2. `Preview & Upload Image` 节点
+这个节点负责处理和预览图像。
 
--   **API 密钥和令牌**：在 `headers_json` 字段中小心处理敏感信息。
--   **数据隐私**：注意您在 `extra_data_json` 字段中发送的数据。
+-   **images (输入)**: 连接到图像生成节点的输出。
+-   **upload_config (输入, 可选)**: 连接到 `Upload Config` 节点的输出。
+
+### 示例工作流
+
+1.  在您的工作流中添加一个 `Upload Config` 节点，并填入您的服务器信息。
+2.  在 KSampler 等节点的输出后面，添加一个 `Preview & Upload Image` 节点。
+3.  将 `Upload Config` 节点的 `UPLOAD_CONFIG` 输出连接到 `Preview & Upload Image` 节点的 `upload_config` 输入。
+
+现在，每次运行工作流时，图片都会先在本地预览，然后自动上传到您配置的服务器。如果您想暂时禁用上传，只需断开两个节点之间的连接即可。
 
 ## 许可证
 

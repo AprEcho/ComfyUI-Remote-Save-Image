@@ -1,60 +1,58 @@
-# ComfyUI Remote Preview & Save
+# ComfyUI Modular Upload Nodes
 
-A custom node for ComfyUI that combines the immediate feedback of a local preview with the persistence of a remote upload.
+A set of custom nodes for ComfyUI that modularizes remote upload functionality. It separates upload configuration from image processing, providing significant flexibility and reusability.
 
 ## Overview
 
-This node is designed to replicate the user experience of the native `PreviewImage` node while adding the powerful capability to upload the generated image to a remote server via HTTP POST or WebDAV.
+This plugin consists of two core nodes:
+1.  **`Upload Config`**: A configuration node for defining remote server details (URL, mode, credentials).
+2.  **`Preview & Upload Image`**: An execution node that previews an image and performs an upload based on the provided configuration.
 
-Its core workflow is to first save the image to a local temporary directory for an instant preview in the ComfyUI interface, and then, in the background, upload that same image to your specified remote location.
+This design allows you to create a single configuration in your workflow and connect it to multiple `Preview & Upload Image` nodes for centralized management.
 
 ## Features
 
--   **Local-First Preview**: Exactly matches the native `PreviewImage` experience, showing your results instantly.
--   **Advanced Filename Formatting**: Fully supports ComfyUI's advanced filename syntax, like `%date:yyyy-MM-dd%` or referencing values from other nodes.
--   **Metadata Preservation**: Automatically embeds the full workflow (Prompt, extra_pnginfo) into the PNG file.
--   **Dual Upload Modes**: Supports uploading via both `HTTP POST` and `WebDAV`.
--   **Remote File-Existence Check**: In WebDAV mode, it checks if a file with the same name already exists on the server and skips the upload to prevent duplicates.
--   **PNG-Only**: To ensure metadata integrity, the node exclusively saves and uploads images in PNG format.
+-   **Modular Design**: Separates configuration from execution, leading to cleaner and more manageable workflows.
+-   **Native Preview Experience**: The `Preview & Upload Image` node perfectly replicates the functionality of the native `PreviewImage` node for instant results.
+-   **Native Naming Logic**: Fully utilizes ComfyUI's temporary file naming mechanism, eliminating the need for manual filename setup.
+-   **Metadata Preservation**: Automatically embeds the full workflow metadata into the PNG file.
+-   **Unified Authentication**: Uses a single set of username/password inputs for both `HTTP POST` (Basic Auth) and `WebDAV`.
+-   **WebDAV Duplicate Check**: Checks for file existence before uploading in WebDAV mode to prevent duplicates.
+-   **Optional Upload**: If the `Preview & Upload Image` node is not connected to an `Upload Config`, it functions solely as a standard preview node.
 
 ## Installation
 
-1.  Clone this repository into your ComfyUI's `custom_nodes` directory:
-    ```
-    cd /path/to/ComfyUI/custom_nodes
-    git clone https://github.com/yourusername/ComfyUI-Remote-Save-Image.git
-    ```
-2.  Install the required dependencies:
-    ```
-    cd ComfyUI-Remote-Save-Image
-    pip install -r requirements.txt
-    ```
-3.  Restart ComfyUI
+1.  Clone this repository into your ComfyUI `custom_nodes` directory.
+2.  Install the required dependencies: `pip install -r requirements.txt`.
+3.  Restart ComfyUI.
 
 ## Usage
 
-After installation, you will find the **`Remote Preview & Save`** node in the `image/upload` category in the ComfyUI node menu.
+After installation, you will find two new nodes in the `image/upload` category.
 
-### Node Parameters
+### 1. `Upload Config` Node
+This node defines your upload destination.
 
--   **images**: Connect to the output of an image-generating node.
--   **filename_prefix**: The prefix for the filename, which supports ComfyUI's advanced formatting syntax.
--   **upload_mode**: The upload mode, either `HTTP_POST` or `WEBDAV`.
--   **upload_url**: The destination URL for the remote upload.
-    -   In **HTTP POST** mode, this is the API endpoint receiving the request.
-    -   In **WebDAV** mode, this is the target directory URL on your server.
--   **image_field_name**: (HTTP POST only) The form field name for the image file.
--   **headers_json**: (HTTP POST only) Custom HTTP headers.
--   **extra_data_json**: (HTTP POST only) Additional form data.
--   **webdav_user**: (WebDAV only) Username for WebDAV authentication.
--   **webdav_password**: (WebDAV only) Password for WebDAV authentication.
+-   **upload_url**: The remote server address.
+-   **upload_mode**: The upload mode (`HTTP_POST` or `WEBDAV`).
+-   **username**: The username for authentication.
+-   **password**: The password for authentication.
 
-**Note**: If `upload_url` is left empty, the node will only perform the local preview and skip the remote upload.
+It outputs an `UPLOAD_CONFIG` object.
 
-## Security Considerations
+### 2. `Preview & Upload Image` Node
+This node processes and previews the image.
 
--   **API Keys and Tokens**: Be careful with sensitive information in the `headers_json` field.
--   **Data Privacy**: Be mindful of what data you're sending in the `extra_data_json` field.
+-   **images (Input)**: Connect to the output of an image-generating node.
+-   **upload_config (Input, Optional)**: Connect to the output of an `Upload Config` node.
+
+### Example Workflow
+
+1.  Add an `Upload Config` node to your workflow and fill in your server details.
+2.  After your KSampler (or other image generator), add a `Preview & Upload Image` node.
+3.  Connect the `UPLOAD_CONFIG` output from the `Upload Config` node to the `upload_config` input of the `Preview & Upload Image` node.
+
+Now, every time you run the workflow, the image will be previewed locally and then automatically uploaded to your configured server. If you want to disable uploads temporarily, simply disconnect the two nodes.
 
 ## License
 
