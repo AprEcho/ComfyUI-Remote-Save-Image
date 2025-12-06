@@ -14,7 +14,7 @@ This design allows you to create a single configuration in your workflow and con
 
 -   **Modular Design**: Separates configuration from execution, leading to cleaner and more manageable workflows.
 -   **Native Preview Experience**: The `Preview & Upload Image` node perfectly replicates the functionality of the native `PreviewImage` node for instant results.
--   **Native Naming Logic**: Fully utilizes ComfyUI's temporary file naming mechanism, eliminating the need for manual filename setup.
+-   **Timestamp Naming**: Files are automatically named based on their generation time (e.g., `20251206192823123_000.png`) for clarity.
 -   **Metadata Preservation**: Automatically embeds the full workflow metadata into the PNG file.
 -   **Unified Authentication**: Uses a single set of username/password inputs for both `HTTP POST` (Basic Auth) and `WebDAV`.
 -   **WebDAV Duplicate Check**: Checks for file existence before uploading in WebDAV mode to prevent duplicates.

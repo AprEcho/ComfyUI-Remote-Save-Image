@@ -53,7 +53,6 @@ class RemotePreviewAndUpload:
     def __init__(self):
         self.output_dir = folder_paths.get_temp_directory()
         self.type = "temp"
-        self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for _ in range(5))
         self.compress_level = 1
 
     @classmethod
@@ -77,15 +76,15 @@ class RemotePreviewAndUpload:
     CATEGORY = "image/upload"
 
     def execute(self, images, upload_config=None, prompt=None, extra_pnginfo=None):
-        # Use native ComfyUI filename generation for temp files
-        full_output_folder, filename, counter, subfolder, _ = folder_paths.get_save_image_path(self.prefix_append, self.output_dir, images[0].shape[1], images[0].shape[0])
-        
+        full_output_folder = self.output_dir
+        subfolder = "" # Temp files don't have subfolders
+
         results = []
         for (batch_number, image) in enumerate(images):
             # --- 1. Local Save (for Preview) ---
             i = 255. * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-            
+
             metadata = PngInfo()
             if not args.disable_metadata:
                 if prompt is not None:
@@ -94,16 +93,17 @@ class RemotePreviewAndUpload:
                     for x in extra_pnginfo:
                         metadata.add_text(x, json.dumps(extra_pnginfo[x]))
 
-            filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
-            file = f"{filename_with_batch_num}_{counter:05}_.png"
+            # Generate filename based on timestamp
+            timestamp = time.strftime("%Y%m%d%H%M%S")
+            ms = int(time.time() * 1000) % 1000
+            file = f"{timestamp}{ms:03d}_{batch_number:03d}.png"
             local_filepath = os.path.join(full_output_folder, file)
-            
+
             try:
                 img.save(local_filepath, pnginfo=metadata, compress_level=self.compress_level)
                 logger.info(f"Saved image locally to: {local_filepath}")
-                
+
                 results.append({"filename": file, "subfolder": subfolder, "type": self.type})
-                counter += 1
             except Exception as e:
                 logger.error(f"Error saving image locally: {e}\n{traceback.format_exc()}")
                 continue
