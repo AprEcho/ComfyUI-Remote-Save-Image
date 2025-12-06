@@ -1,5 +1,6 @@
 import json
 import io
+import time
 import requests
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
