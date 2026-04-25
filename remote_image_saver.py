@@ -139,7 +139,8 @@ class RemotePreviewAndUpload:
 
                 if upload_config["mode"] == "WEBDAV":
                     auth = (upload_config["user"], upload_config["pass"]) if upload_config["user"] else None
-                    response = requests.put(full_remote_url, data=image_bytes, auth=auth, timeout=60)
+                    headers = {'Content-Length': str(len(image_bytes))}
+                    response = requests.put(full_remote_url, data=image_bytes, auth=auth, headers=headers, timeout=60)
                     response.raise_for_status()
                     logger.info(f"Successfully uploaded to {full_remote_url}")
                 
